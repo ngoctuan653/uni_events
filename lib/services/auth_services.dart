@@ -34,14 +34,25 @@ class AuthService {
   }
 
   /// LOGIN
-  Future<UserCredential> login({
+  Future<String> login({
     required String email,
     required String password,
   }) async {
-    return await _auth.signInWithEmailAndPassword(
+    UserCredential credential = await _auth.signInWithEmailAndPassword(
       email: email,
       password: password,
     );
+
+    // Fetch user role
+    DocumentSnapshot userDoc = await _db
+        .collection('users')
+        .doc(credential.user!.uid)
+        .get();
+    if (userDoc.exists) {
+      Map<String, dynamic> data = userDoc.data() as Map<String, dynamic>;
+      return data['role'] ?? 'student';
+    }
+    return 'student'; // Default role
   }
 
   /// LOGOUT

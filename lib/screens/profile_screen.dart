@@ -64,12 +64,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF111827), // Darker background
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          icon: const Icon(Icons.arrow_back, color: Colors.black87),
           onPressed: () {
             if (Navigator.canPop(context)) {
               Navigator.pop(context);
@@ -78,7 +78,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         title: const Text(
           'Profile',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
       ),
@@ -92,10 +92,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
               // Profile Picture
               CircleAvatar(
                 radius: 50,
-                backgroundColor: Colors.grey.shade800,
+                backgroundColor: Colors.grey.shade200,
                 backgroundImage: avatar != null ? NetworkImage(avatar!) : null,
                 child: avatar == null
-                    ? const Icon(Icons.person, size: 50, color: Colors.white)
+                    ? const Icon(Icons.person, size: 50, color: Colors.grey)
                     : null,
               ),
               const SizedBox(height: 16),
@@ -103,7 +103,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Text(
                 name,
                 style: const TextStyle(
-                  color: Colors.white,
+                  color: Colors.black87,
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
                 ),
@@ -112,7 +112,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               // Student ID under name
               Text(
                 studentId,
-                style: const TextStyle(color: Colors.grey, fontSize: 14),
+                style: const TextStyle(color: Colors.black54, fontSize: 14),
               ),
               const SizedBox(height: 16),
               // Edit Profile Button
@@ -131,7 +131,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     }
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blueAccent,
+                    backgroundColor: Colors.orange,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
@@ -148,12 +148,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const SizedBox(height: 40),
 
               // PERSONAL INFORMATION Section
-              const Align(
+              Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
                   'PERSONAL INFORMATION',
                   style: TextStyle(
-                    color: Colors.grey,
+                    color: Colors.grey.shade600,
                     fontSize: 12,
                     fontWeight: FontWeight.bold,
                     letterSpacing: 1.2,
@@ -163,30 +163,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const SizedBox(height: 12),
               Container(
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1F2937),
+                  color: Colors.grey.shade50,
                   borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey.shade200),
                 ),
                 child: Column(
                   children: [
-                    _buildInfoRow(Icons.email, Colors.blue, 'Email', email),
+                    _buildInfoRow(Icons.email, Colors.orange, 'Email', email),
                     _buildDivider(),
                     _buildInfoRow(
                       Icons.phone_android,
-                      Colors.blue,
+                      Colors.orange,
                       'Phone',
                       phone,
                     ),
                     _buildDivider(),
                     _buildInfoRow(
                       Icons.school,
-                      Colors.blue,
+                      Colors.orange,
                       'Faculty',
                       faculty,
                     ),
                     _buildDivider(),
                     _buildInfoRow(
                       Icons.badge,
-                      Colors.blue,
+                      Colors.orange,
                       'Student ID',
                       studentId,
                     ),
@@ -196,12 +197,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const SizedBox(height: 30),
 
               // SETTINGS Section
-              const Align(
+              Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
                   'SETTINGS',
                   style: TextStyle(
-                    color: Colors.grey,
+                    color: Colors.grey.shade600,
                     fontSize: 12,
                     fontWeight: FontWeight.bold,
                     letterSpacing: 1.2,
@@ -211,8 +212,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const SizedBox(height: 12),
               Container(
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1F2937), // Dark grayish blue
+                  color: Colors.grey.shade50,
                   borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey.shade200),
                 ),
                 child: Column(
                   children: [
@@ -232,18 +234,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 height: 50,
                 child: OutlinedButton.icon(
                   onPressed: _logout,
-                  icon: const Icon(Icons.logout, color: Colors.redAccent),
+                  icon: const Icon(Icons.logout, color: Colors.red),
                   label: const Text(
                     'Logout',
                     style: TextStyle(
-                      color: Colors.redAccent,
+                      color: Colors.red,
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   style: OutlinedButton.styleFrom(
-                    side: BorderSide.none,
-                    backgroundColor: const Color(0xFF1F2937),
+                    side: BorderSide(color: Colors.red.shade200),
+                    backgroundColor: Colors.red.shade50,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -254,25 +256,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ],
           ),
         ),
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        backgroundColor: const Color(0xFF1F2937),
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: Colors.blueAccent,
-        unselectedItemColor: Colors.grey,
-        currentIndex: 3, // Profile is selected
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.calendar_today),
-            label: 'Events',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.confirmation_number),
-            label: 'Tickets',
-          ),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
-        ],
       ),
     );
   }
@@ -290,16 +273,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: const Color(0xFF2C3E50), // slightly lighter
+              color: Colors.orange.shade50,
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: Colors.blueAccent, size: 18),
+            child: Icon(icon, color: Colors.orange, size: 18),
           ),
           const SizedBox(width: 16),
           Text(
             title,
             style: const TextStyle(
-              color: Colors.white,
+              color: Colors.black87,
               fontSize: 14,
               fontWeight: FontWeight.w500,
             ),
@@ -311,7 +294,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               textAlign: TextAlign.right,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: Colors.white70, fontSize: 14),
+              style: const TextStyle(color: Colors.black54, fontSize: 14),
             ),
           ),
         ],
@@ -327,28 +310,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: const Color(0xFF2C3E50),
+              color: Colors.grey.shade100,
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: Colors.grey.shade400, size: 18),
+            child: Icon(icon, color: Colors.black54, size: 18),
           ),
           const SizedBox(width: 16),
           Text(
             title,
             style: const TextStyle(
-              color: Colors.white,
+              color: Colors.black87,
               fontSize: 14,
               fontWeight: FontWeight.w500,
             ),
           ),
           const Spacer(),
-          const Icon(Icons.chevron_right, color: Colors.grey, size: 20),
+          const Icon(Icons.chevron_right, color: Colors.black26, size: 20),
         ],
       ),
     );
   }
 
   Widget _buildDivider() {
-    return Divider(color: Colors.grey.shade800, height: 1, thickness: 1);
+    return Divider(color: Colors.grey.shade200, height: 1, thickness: 1);
   }
 }
