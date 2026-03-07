@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../models/event.dart';
 import '../../services/event_services.dart';
 import '../club/club_public_profile_screen.dart';
@@ -17,6 +18,7 @@ class EventDetailScreen extends StatefulWidget {
 class _EventDetailScreenState extends State<EventDetailScreen> {
   final EventService _eventService = EventService();
   final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
   bool _isProcessing = false;
 
   // Club/organizer data
@@ -24,10 +26,26 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   String? _clubAvatar;
   bool _clubLoaded = false;
 
+  // User role
+  String _userRole = 'student';
+
   @override
   void initState() {
     super.initState();
     _fetchClubData();
+    _fetchUserRole();
+  }
+
+  Future<void> _fetchUserRole() async {
+    User? user = _auth.currentUser;
+    if (user != null) {
+      final doc = await _db.collection('users').doc(user.uid).get();
+      if (doc.exists && mounted) {
+        setState(() {
+          _userRole = doc.data()?['role'] ?? 'student';
+        });
+      }
+    }
   }
 
   Future<void> _fetchClubData() async {
@@ -487,6 +505,53 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
 
                   const SizedBox(height: 24),
 
+                  // Countdown Timer
+                  if (event.startTime != null &&
+                      event.startTime!.isAfter(DateTime.now()))
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      margin: const EdgeInsets.only(bottom: 24),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            Colors.orange.shade400,
+                            Colors.orange.shade600,
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.orange.withValues(alpha: 0.3),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        children: [
+                          const Text(
+                            'Event starts in',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            _getCountdown(event.startTime!),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1.2,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
                   // Info Tiles
                   _buildInfoTile(
                     icon: Icons.calendar_today,
@@ -524,127 +589,263 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                     },
                   ),
 
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 32),
 
-                  // Register / Unregister Button (live state)
-                  StreamBuilder<bool>(
-                    stream: _eventService.isRegisteredStream(event.id),
+                  // Participants List Section
+                  const Text(
+                    'Participants',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  StreamBuilder<QuerySnapshot>(
+                    stream: _db
+                        .collection('eventRegistrations')
+                        .where('eventId', isEqualTo: event.id)
+                        .snapshots(),
                     builder: (context, snapshot) {
-                      final isRegistered = snapshot.data ?? false;
-
-                      if (isRegistered) {
-                        // Already registered — show status + unregister option
-                        return Column(
-                          children: [
-                            Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 14,
-                                horizontal: 20,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.green.shade50,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: Colors.green.shade200,
-                                ),
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.check_circle,
-                                    color: Colors.green.shade700,
-                                    size: 22,
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Text(
-                                    'You are registered!',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.green.shade700,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            SizedBox(
-                              width: double.infinity,
-                              height: 48,
-                              child: OutlinedButton(
-                                onPressed: _isProcessing
-                                    ? null
-                                    : _handleUnregister,
-                                style: OutlinedButton.styleFrom(
-                                  side: BorderSide(color: Colors.red.shade200),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                ),
-                                child: _isProcessing
-                                    ? const SizedBox(
-                                        width: 20,
-                                        height: 20,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          color: Colors.red,
-                                        ),
-                                      )
-                                    : const Text(
-                                        'Cancel Registration',
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w600,
-                                          color: Colors.red,
-                                        ),
-                                      ),
-                              ),
-                            ),
-                          ],
+                      if (!snapshot.hasData) {
+                        return const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(20),
+                            child: CircularProgressIndicator(),
+                          ),
                         );
-                      } else {
-                        // Not registered — show register button
-                        return SizedBox(
-                          width: double.infinity,
-                          height: 55,
-                          child: ElevatedButton.icon(
-                            onPressed: _isProcessing ? null : _handleRegister,
-                            icon: _isProcessing
-                                ? const SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Colors.white,
-                                    ),
-                                  )
-                                : const Icon(
-                                    Icons.event_available,
-                                    color: Colors.white,
-                                  ),
-                            label: Text(
-                              _isProcessing
-                                  ? 'Registering...'
-                                  : 'Register for Event',
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.orange,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
+                      }
+
+                      final registrations = snapshot.data!.docs;
+                      if (registrations.isEmpty) {
+                        return Container(
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade50,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.grey.shade200),
+                          ),
+                          child: Center(
+                            child: Text(
+                              'No participants yet',
+                              style: TextStyle(
+                                color: Colors.grey.shade500,
+                                fontSize: 14,
                               ),
                             ),
                           ),
                         );
                       }
+
+                      return Column(
+                        children: registrations.map((regDoc) {
+                          final userId = regDoc['userId'] as String;
+                          return FutureBuilder<DocumentSnapshot>(
+                            future: _db.collection('users').doc(userId).get(),
+                            builder: (context, userSnapshot) {
+                              if (!userSnapshot.hasData) {
+                                return const SizedBox.shrink();
+                              }
+
+                              final userData =
+                                  userSnapshot.data!.data()
+                                      as Map<String, dynamic>?;
+                              final userName =
+                                  userData?['name'] ?? 'Unknown User';
+                              final userEmail = userData?['email'] ?? '';
+                              final userAvatar = userData?['avatar'];
+
+                              return Container(
+                                margin: const EdgeInsets.only(bottom: 12),
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: Colors.grey.shade200,
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    CircleAvatar(
+                                      radius: 24,
+                                      backgroundColor: Colors.orange.shade100,
+                                      backgroundImage:
+                                          userAvatar != null &&
+                                              userAvatar.isNotEmpty
+                                          ? NetworkImage(userAvatar)
+                                          : null,
+                                      child:
+                                          userAvatar == null ||
+                                              userAvatar.isEmpty
+                                          ? Icon(
+                                              Icons.person,
+                                              color: Colors.orange.shade700,
+                                              size: 24,
+                                            )
+                                          : null,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            userName,
+                                            style: const TextStyle(
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.black87,
+                                            ),
+                                          ),
+                                          if (userEmail.isNotEmpty) ...[
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              userEmail,
+                                              style: TextStyle(
+                                                fontSize: 13,
+                                                color: Colors.grey.shade600,
+                                              ),
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          );
+                        }).toList(),
+                      );
                     },
                   ),
+
+                  const SizedBox(height: 40),
+
+                  // Register / Unregister Button (live state) - Only for students
+                  if (_userRole == 'student')
+                    StreamBuilder<bool>(
+                      stream: _eventService.isRegisteredStream(event.id),
+                      builder: (context, snapshot) {
+                        final isRegistered = snapshot.data ?? false;
+
+                        if (isRegistered) {
+                          // Already registered — show status + unregister option
+                          return Column(
+                            children: [
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14,
+                                  horizontal: 20,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.green.shade50,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: Colors.green.shade200,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.check_circle,
+                                      color: Colors.green.shade700,
+                                      size: 22,
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Text(
+                                      'You are registered!',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.green.shade700,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              SizedBox(
+                                width: double.infinity,
+                                height: 48,
+                                child: OutlinedButton(
+                                  onPressed: _isProcessing
+                                      ? null
+                                      : _handleUnregister,
+                                  style: OutlinedButton.styleFrom(
+                                    side: BorderSide(
+                                      color: Colors.red.shade200,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                  child: _isProcessing
+                                      ? const SizedBox(
+                                          width: 20,
+                                          height: 20,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: Colors.red,
+                                          ),
+                                        )
+                                      : const Text(
+                                          'Cancel Registration',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.red,
+                                          ),
+                                        ),
+                                ),
+                              ),
+                            ],
+                          );
+                        } else {
+                          // Not registered — show register button
+                          return SizedBox(
+                            width: double.infinity,
+                            height: 55,
+                            child: ElevatedButton.icon(
+                              onPressed: _isProcessing ? null : _handleRegister,
+                              icon: _isProcessing
+                                  ? const SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : const Icon(
+                                      Icons.event_available,
+                                      color: Colors.white,
+                                    ),
+                              label: Text(
+                                _isProcessing
+                                    ? 'Registering...'
+                                    : 'Register for Event',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.orange,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                            ),
+                          );
+                        }
+                      },
+                    ),
                   const SizedBox(height: 40),
                 ],
               ),
@@ -717,5 +918,34 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
         ),
       ],
     );
+  }
+
+  String _getCountdown(DateTime eventTime) {
+    final now = DateTime.now();
+    final difference = eventTime.difference(now);
+
+    if (difference.isNegative) {
+      return 'Event has started';
+    }
+
+    final days = difference.inDays;
+    final hours = difference.inHours % 24;
+    final minutes = difference.inMinutes % 60;
+
+    if (days > 30) {
+      final months = (days / 30).floor();
+      final remainingDays = days % 30;
+      return '$months ${months == 1 ? 'month' : 'months'} ${remainingDays > 0 ? '$remainingDays ${remainingDays == 1 ? 'day' : 'days'}' : ''}';
+    } else if (days > 7) {
+      final weeks = (days / 7).floor();
+      final remainingDays = days % 7;
+      return '$weeks ${weeks == 1 ? 'week' : 'weeks'} ${remainingDays > 0 ? '$remainingDays ${remainingDays == 1 ? 'day' : 'days'}' : ''}';
+    } else if (days > 0) {
+      return '$days ${days == 1 ? 'day' : 'days'} $hours ${hours == 1 ? 'hour' : 'hours'}';
+    } else if (hours > 0) {
+      return '$hours ${hours == 1 ? 'hour' : 'hours'} $minutes ${minutes == 1 ? 'minute' : 'minutes'}';
+    } else {
+      return '$minutes ${minutes == 1 ? 'minute' : 'minutes'}';
+    }
   }
 }

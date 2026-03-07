@@ -21,6 +21,8 @@ exports.sendEventNotification = functions.firestore
             },
             data: {
                 eventId: newValue.eventId || '',
+                eventName: newValue.eventName || newValue.title || '',
+                type: newValue.type || 'event_notification',
                 click_action: 'FLUTTER_NOTIFICATION_CLICK',
             }
         };

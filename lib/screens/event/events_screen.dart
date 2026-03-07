@@ -4,6 +4,7 @@ import '../../services/event_services.dart';
 import '../../services/notification_services.dart';
 import '../../models/event.dart';
 import 'event_detail_screen.dart';
+import 'all_events_screen.dart';
 import '../notification/notifications_screen.dart';
 
 class EventsScreen extends StatefulWidget {
@@ -51,12 +52,21 @@ class _EventsScreenState extends State<EventsScreen> {
             }
 
             List<Event> allEvents = snapshot.data ?? [];
-            List<Event> featuredEvents = allEvents.length >= 2
-                ? allEvents.sublist(0, 2)
-                : allEvents;
-            List<Event> upcomingEvents = allEvents.length >= 2
-                ? allEvents.sublist(2)
-                : allEvents;
+            // Sort events by participant count (highest first)
+            allEvents.sort(
+              (a, b) => b.participantCount.compareTo(a.participantCount),
+            );
+            // Show all events in featured section
+            List<Event> featuredEvents = allEvents;
+
+            // Sort upcoming events by start time (nearest first)
+            List<Event> upcomingEvents = List.from(allEvents);
+            upcomingEvents.sort((a, b) {
+              if (a.startTime == null && b.startTime == null) return 0;
+              if (a.startTime == null) return 1;
+              if (b.startTime == null) return -1;
+              return a.startTime!.compareTo(b.startTime!);
+            });
 
             return CustomScrollView(
               slivers: [
@@ -70,7 +80,21 @@ class _EventsScreenState extends State<EventsScreen> {
                         const SizedBox(height: 20),
                         _buildSearchBar(),
                         const SizedBox(height: 30),
-                        _buildSectionHeader('Featured Events', 'See all'),
+                        _buildSectionHeader(
+                          'Featured Events',
+                          'See all',
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => AllEventsScreen(
+                                  events: featuredEvents,
+                                  title: 'Featured Events',
+                                ),
+                              ),
+                            );
+                          },
+                        ),
                         const SizedBox(height: 16),
                         _buildFeaturedEvents(featuredEvents),
                         const SizedBox(height: 30),
@@ -89,9 +113,7 @@ class _EventsScreenState extends State<EventsScreen> {
                     ),
                   ),
                 ),
-                _buildUpcomingEvents(
-                  allEvents.isNotEmpty ? allEvents : upcomingEvents,
-                ), // Show all in upcoming for better display if not many
+                _buildUpcomingEvents(upcomingEvents),
               ],
             );
           },
@@ -196,7 +218,11 @@ class _EventsScreenState extends State<EventsScreen> {
     );
   }
 
-  Widget _buildSectionHeader(String title, String action) {
+  Widget _buildSectionHeader(
+    String title,
+    String action, {
+    VoidCallback? onTap,
+  }) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -208,12 +234,15 @@ class _EventsScreenState extends State<EventsScreen> {
             fontWeight: FontWeight.bold,
           ),
         ),
-        Text(
-          action,
-          style: const TextStyle(
-            color: Colors.orange,
-            fontWeight: FontWeight.w600,
-            fontSize: 14,
+        GestureDetector(
+          onTap: onTap,
+          child: Text(
+            action,
+            style: const TextStyle(
+              color: Colors.orange,
+              fontWeight: FontWeight.w600,
+              fontSize: 14,
+            ),
           ),
         ),
       ],
@@ -285,35 +314,7 @@ class _EventsScreenState extends State<EventsScreen> {
                           Positioned(
                             top: 12,
                             right: 12,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.6),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(
-                                    Icons.people,
-                                    color: Colors.black87,
-                                    size: 14,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    '${event.participantCount}+',
-                                    style: const TextStyle(
-                                      color: Colors.black87,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
+                            child: _buildParticipantBadge(event),
                           ),
                           // Category Tag
                           Positioned(
@@ -422,6 +423,51 @@ class _EventsScreenState extends State<EventsScreen> {
     );
   }
 
+  Widget _buildParticipantIcon(Event event) {
+    // Check if event is hot (>= 40% capacity)
+    final isHot =
+        event.capacity > 0 && (event.participantCount / event.capacity) >= 0.4;
+
+    if (isHot) {
+      return const _HotIcon();
+    }
+
+    return const Icon(Icons.people, color: Colors.black87, size: 14);
+  }
+
+  Widget _buildParticipantBadge(Event event) {
+    // Check if event is hot (>= 40% capacity)
+    final isHot =
+        event.capacity > 0 && (event.participantCount / event.capacity) >= 0.4;
+
+    if (isHot) {
+      return _HotBadge(participantCount: event.participantCount);
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildParticipantIcon(event),
+          const SizedBox(width: 4),
+          Text(
+            '${event.participantCount}+',
+            style: const TextStyle(
+              color: Colors.black87,
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildUpcomingEvents(List<Event> events) {
     if (events.isEmpty) {
       return const SliverToBoxAdapter(
@@ -450,8 +496,14 @@ class _EventsScreenState extends State<EventsScreen> {
             timeStr = DateFormat('h:mm a').format(startTime);
           }
 
-          List<String> pseudoClubs = ['Tech Club', 'Academic', 'Sports', 'Art'];
-          String pseudoClub = pseudoClubs[index % pseudoClubs.length];
+          String imageUrl = event.image.isNotEmpty
+              ? event.image
+              : 'https://images.unsplash.com/photo-1540575467063-112007325fb1?q=80&w=2600&auto=format&fit=crop';
+
+          if (index % 2 != 0 && event.image.isEmpty) {
+            imageUrl =
+                'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?q=80&w=2600&auto=format&fit=crop';
+          }
 
           return GestureDetector(
             onTap: () {
@@ -464,7 +516,6 @@ class _EventsScreenState extends State<EventsScreen> {
             },
             child: Container(
               margin: const EdgeInsets.only(bottom: 16),
-              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
@@ -477,96 +528,133 @@ class _EventsScreenState extends State<EventsScreen> {
                   ),
                 ],
               ),
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Date Box
-                  Container(
-                    width: 60,
-                    height: 70,
-                    decoration: BoxDecoration(
-                      color: Colors.orange.shade50,
-                      borderRadius: BorderRadius.circular(12),
+                  // Banner Image
+                  ClipRRect(
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(16),
+                      topRight: Radius.circular(16),
                     ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                    child: Stack(
                       children: [
-                        Text(
-                          month,
-                          style: const TextStyle(
-                            color: Colors.orange,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
+                        Image.network(
+                          imageUrl,
+                          height: 160,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          day,
-                          style: const TextStyle(
-                            color: Colors.black87,
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
+                        // Date badge overlay
+                        Positioned(
+                          top: 12,
+                          left: 12,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.orange,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Column(
+                              children: [
+                                Text(
+                                  month,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Text(
+                                  day,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(width: 16),
                   // Event Details
-                  Expanded(
+                  Padding(
+                    padding: const EdgeInsets.all(16),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           event.title.isNotEmpty ? event.title : 'No Title',
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             color: Colors.black87,
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        const SizedBox(height: 6),
-                        Text(
-                          event.location.isNotEmpty
-                              ? event.location
-                              : 'Location TBD',
-                          style: const TextStyle(
-                            color: Colors.grey,
-                            fontSize: 13,
-                          ),
-                        ),
                         const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.location_on,
+                              color: Colors.grey,
+                              size: 16,
+                            ),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                event.location.isNotEmpty
+                                    ? event.location
+                                    : 'Location TBD',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Colors.grey,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
                         Row(
                           children: [
                             const Icon(
                               Icons.access_time,
                               color: Colors.grey,
-                              size: 14,
+                              size: 16,
                             ),
                             const SizedBox(width: 6),
-                            Text(
-                              timeStr,
-                              style: const TextStyle(
-                                color: Colors.grey,
-                                fontSize: 12,
+                            Expanded(
+                              child: Text(
+                                timeStr,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Colors.grey,
+                                  fontSize: 13,
+                                ),
                               ),
                             ),
-                            const SizedBox(width: 8),
-                            const Text(
-                              '•',
-                              style: TextStyle(color: Colors.grey),
-                            ),
-                            const SizedBox(width: 8),
                             const Icon(
-                              Icons.local_offer,
-                              color: Colors.grey,
-                              size: 14,
+                              Icons.people,
+                              color: Colors.orange,
+                              size: 16,
                             ),
-                            const SizedBox(width: 6),
+                            const SizedBox(width: 4),
                             Text(
-                              pseudoClub,
+                              '${event.participantCount}',
                               style: const TextStyle(
-                                color: Colors.grey,
-                                fontSize: 12,
+                                color: Colors.orange,
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
                           ],
@@ -580,6 +668,143 @@ class _EventsScreenState extends State<EventsScreen> {
           );
         }, childCount: events.length),
       ),
+    );
+  }
+}
+
+class _HotIcon extends StatefulWidget {
+  const _HotIcon();
+
+  @override
+  State<_HotIcon> createState() => _HotIconState();
+}
+
+class _HotIconState extends State<_HotIcon>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+  late Animation<Color?> _colorAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    )..repeat(reverse: true);
+
+    _scaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: 1.3,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+
+    _colorAnimation = ColorTween(
+      begin: Colors.orange,
+      end: Colors.red,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Transform.scale(
+          scale: _scaleAnimation.value,
+          child: Icon(
+            Icons.local_fire_department,
+            color: _colorAnimation.value,
+            size: 14,
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _HotBadge extends StatefulWidget {
+  final int participantCount;
+
+  const _HotBadge({required this.participantCount});
+
+  @override
+  State<_HotBadge> createState() => _HotBadgeState();
+}
+
+class _HotBadgeState extends State<_HotBadge>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<Color?> _bgColorAnimation;
+  late Animation<Color?> _textColorAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 1000),
+      vsync: this,
+    )..repeat(reverse: true);
+
+    _bgColorAnimation = ColorTween(
+      begin: Colors.orange.shade100.withValues(alpha: 0.9),
+      end: Colors.red.shade100.withValues(alpha: 0.9),
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+
+    _textColorAnimation = ColorTween(
+      begin: Colors.orange.shade900,
+      end: Colors.red.shade900,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: _bgColorAnimation.value,
+            borderRadius: BorderRadius.circular(8),
+            boxShadow: [
+              BoxShadow(
+                color: (_bgColorAnimation.value ?? Colors.orange).withValues(
+                  alpha: 0.4,
+                ),
+                blurRadius: 8,
+                spreadRadius: 1,
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const _HotIcon(),
+              const SizedBox(width: 4),
+              Text(
+                '${widget.participantCount}+',
+                style: TextStyle(
+                  color: _textColorAnimation.value,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

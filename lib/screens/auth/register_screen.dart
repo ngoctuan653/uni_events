@@ -16,6 +16,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final passwordController = TextEditingController();
   final AuthService _authService = AuthService();
   bool obscurePassword = true;
+  bool _isLoading = false;
 
   @override
   Widget build(BuildContext context) {
@@ -40,11 +41,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 const SizedBox(height: 20),
 
                 /// TITLE
-                const Text(
-                  "Register",
-                  style: TextStyle(fontSize: 22, color: Colors.black87),
-                ),
-                const SizedBox(height: 20),
                 const Text(
                   "Create Account",
                   style: TextStyle(
@@ -185,43 +181,68 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         borderRadius: BorderRadius.circular(30),
                       ),
                     ),
-                    onPressed: () async {
-                      try {
-                        await _authService.register(
-                          name: nameController.text,
-                          studentId: studentIdController.text,
-                          email: emailController.text,
-                          password: passwordController.text,
-                        );
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text("Account created successfully!"),
+                    onPressed: _isLoading
+                        ? null
+                        : () async {
+                            setState(() {
+                              _isLoading = true;
+                            });
+
+                            try {
+                              await _authService.register(
+                                name: nameController.text,
+                                studentId: studentIdController.text,
+                                email: emailController.text,
+                                password: passwordController.text,
+                              );
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      "Account created successfully!",
+                                    ),
+                                  ),
+                                );
+                                Navigator.pushReplacement(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => const LoginScreen(),
+                                  ),
+                                );
+                              }
+                            } catch (e) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text("Error: ${e.toString()}"),
+                                  ),
+                                );
+                              }
+                            } finally {
+                              if (mounted) {
+                                setState(() {
+                                  _isLoading = false;
+                                });
+                              }
+                            }
+                          },
+                    child: _isLoading
+                        ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.5,
+                              color: Colors.white,
                             ),
-                          );
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const LoginScreen(),
+                          )
+                        : const Text(
+                            "Create Account",
+                            style: TextStyle(
+                              fontSize: 18,
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
                             ),
-                          );
-                        }
-                      } catch (e) {
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text("Error: ${e.toString()}")),
-                          );
-                        }
-                      }
-                    },
-                    child: const Text(
-                      "Create Account",
-                      style: TextStyle(
-                        fontSize: 18,
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                          ),
                   ),
                 ),
                 const SizedBox(height: 20),

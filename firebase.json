@@ -1,1 +1,26 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"uni-events-72162","appId":"1:600976886800:android:454e5b0c41c52ccb218e95","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"uni-events-72162","configurations":{"android":"1:600976886800:android:454e5b0c41c52ccb218e95","ios":"1:600976886800:ios:3bf375f1d328ec7d218e95","web":"1:600976886800:web:4f030893740aab1c218e95"}}}}}}
+{
+  "functions": {
+    "source": "functions"
+  },
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "uni-events-72162",
+          "appId": "1:600976886800:android:454e5b0c41c52ccb218e95",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "uni-events-72162",
+          "configurations": {
+            "android": "1:600976886800:android:454e5b0c41c52ccb218e95",
+            "ios": "1:600976886800:ios:3bf375f1d328ec7d218e95",
+            "web": "1:600976886800:web:4f030893740aab1c218e95"
+          }
+        }
+      }
+    }
+  }
+}

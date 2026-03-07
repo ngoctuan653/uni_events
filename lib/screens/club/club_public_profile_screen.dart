@@ -55,6 +55,9 @@ class _ClubPublicProfileScreenState extends State<ClubPublicProfileScreen> {
     final phone = _clubData?['phone'] ?? '';
     final faculty = _clubData?['faculty'] ?? '';
     final description = _clubData?['description'] ?? '';
+    final bio = _clubData?['bio'] ?? '';
+    final history = _clubData?['history'] ?? '';
+    final introduction = _clubData?['introduction'] ?? '';
 
     // Generate initials for fallback avatar
     final initials = (name as String)
@@ -191,6 +194,105 @@ class _ClubPublicProfileScreenState extends State<ClubPublicProfileScreen> {
                         fontSize: 14,
                         color: Colors.grey.shade700,
                         height: 1.5,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                  ],
+
+                  // Bio
+                  if (bio.isNotEmpty) ...[
+                    Text(
+                      '"$bio"',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.grey.shade700,
+                        fontStyle: FontStyle.italic,
+                        fontSize: 14,
+                        height: 1.5,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                  ],
+
+                  // Club History Section
+                  if (history.isNotEmpty) ...[
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.history,
+                          color: Colors.orange.shade700,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'Lịch sử CLB',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.grey,
+                            letterSpacing: 1.2,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.grey.shade200),
+                      ),
+                      child: Text(
+                        history,
+                        style: TextStyle(
+                          color: Colors.grey.shade700,
+                          fontSize: 14,
+                          height: 1.6,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                  ],
+
+                  // Club Introduction Section
+                  if (introduction.isNotEmpty) ...[
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.description,
+                          color: Colors.orange.shade700,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'Giới thiệu CLB',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.grey,
+                            letterSpacing: 1.2,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.grey.shade200),
+                      ),
+                      child: Text(
+                        introduction,
+                        style: TextStyle(
+                          color: Colors.grey.shade700,
+                          fontSize: 14,
+                          height: 1.6,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 24),

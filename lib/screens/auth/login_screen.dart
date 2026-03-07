@@ -31,8 +31,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 20),
 
                 /// BACK BUTTON
-                const Icon(Icons.arrow_back, color: Colors.black87),
-                const SizedBox(height: 20),
+                // const Icon(Icons.arrow_back, color: Colors.black87),
+                // const SizedBox(height: 20),
 
                 /// IMAGE
                 ClipRRect(

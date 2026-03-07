@@ -24,10 +24,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   String? studentId;
   String? phone;
   String? faculty;
+  String? bio;
+  String? history;
+  String? introduction;
   String? _currentAvatarUrl;
   File? _selectedImage;
   bool _isLoading = true;
   bool _isSaving = false;
+  String _userRole = 'student';
 
   @override
   void initState() {
@@ -49,7 +53,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           studentId = data['studentId'];
           phone = data['phone'];
           faculty = data['faculty'];
+          bio = data['bio'];
+          history = data['history'];
+          introduction = data['introduction'];
           _currentAvatarUrl = data['avatar'];
+          _userRole = data['role'] ?? 'student';
           _isLoading = false;
         });
       } else {
@@ -109,11 +117,19 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
         Map<String, dynamic> updateData = {
           'name': name,
-          'studentId': studentId,
-          'phone': phone,
-          'faculty': faculty,
           'updatedAt': Timestamp.now(),
         };
+
+        // Add role-specific fields
+        if (_userRole == 'club') {
+          updateData['bio'] = bio;
+          updateData['history'] = history;
+          updateData['introduction'] = introduction;
+        } else {
+          updateData['studentId'] = studentId;
+          updateData['phone'] = phone;
+          updateData['faculty'] = faculty;
+        }
 
         if (avatarUrl != null) {
           updateData['avatar'] = avatarUrl;
@@ -223,32 +239,57 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               ),
               const SizedBox(height: 20),
 
-              _buildTextField(
-                label: 'Student ID',
-                initialValue: studentId,
-                icon: Icons.badge,
-                onSaved: (value) => studentId = value,
-                validator: (value) => value == null || value.isEmpty
-                    ? 'Please enter your student ID'
-                    : null,
-              ),
-              const SizedBox(height: 20),
-
-              _buildTextField(
-                label: 'Phone Number',
-                initialValue: phone,
-                icon: Icons.phone_android,
-                keyboardType: TextInputType.phone,
-                onSaved: (value) => phone = value,
-              ),
-              const SizedBox(height: 20),
-
-              _buildTextField(
-                label: 'Faculty',
-                initialValue: faculty,
-                icon: Icons.school,
-                onSaved: (value) => faculty = value,
-              ),
+              // Show different fields based on role
+              if (_userRole == 'club') ...[
+                _buildTextField(
+                  label: 'Bio',
+                  initialValue: bio,
+                  icon: Icons.info_outline,
+                  maxLines: 2,
+                  onSaved: (value) => bio = value,
+                ),
+                const SizedBox(height: 20),
+                _buildTextField(
+                  label: 'Lịch sử CLB',
+                  initialValue: history,
+                  icon: Icons.history,
+                  maxLines: 5,
+                  onSaved: (value) => history = value,
+                ),
+                const SizedBox(height: 20),
+                _buildTextField(
+                  label: 'Giới thiệu CLB',
+                  initialValue: introduction,
+                  icon: Icons.description,
+                  maxLines: 5,
+                  onSaved: (value) => introduction = value,
+                ),
+              ] else ...[
+                _buildTextField(
+                  label: 'Student ID',
+                  initialValue: studentId,
+                  icon: Icons.badge,
+                  onSaved: (value) => studentId = value,
+                  validator: (value) => value == null || value.isEmpty
+                      ? 'Please enter your student ID'
+                      : null,
+                ),
+                const SizedBox(height: 20),
+                _buildTextField(
+                  label: 'Phone Number',
+                  initialValue: phone,
+                  icon: Icons.phone_android,
+                  keyboardType: TextInputType.phone,
+                  onSaved: (value) => phone = value,
+                ),
+                const SizedBox(height: 20),
+                _buildTextField(
+                  label: 'Faculty',
+                  initialValue: faculty,
+                  icon: Icons.school,
+                  onSaved: (value) => faculty = value,
+                ),
+              ],
               const SizedBox(height: 40),
 
               SizedBox(
@@ -311,6 +352,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     String? initialValue,
     required IconData icon,
     TextInputType? keyboardType,
+    int? maxLines,
     required void Function(String?) onSaved,
     String? Function(String?)? validator,
   }) {
@@ -318,6 +360,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       initialValue: initialValue,
       style: const TextStyle(color: Colors.black87),
       keyboardType: keyboardType,
+      maxLines: maxLines ?? 1,
       decoration: InputDecoration(
         labelText: label,
         labelStyle: const TextStyle(color: Colors.black54),

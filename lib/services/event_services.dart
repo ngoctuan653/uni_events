@@ -175,6 +175,7 @@ class EventService {
         .where('eventId', isEqualTo: eventId)
         .get();
 
+    // Write to user_notifications for registered users
     for (var regDoc in regs.docs) {
       String userId = regDoc['userId'];
       await _db.collection('user_notifications').add({
@@ -186,6 +187,33 @@ class EventService {
         'isRead': false,
         'createdAt': FieldValue.serverTimestamp(),
       });
+    }
+
+    // Write to notifications collection to trigger Cloud Function for FCM push notification
+    await _db.collection('notifications').add({
+      'title': _getNotificationTitle(type, eventTitle),
+      'body': message,
+      'topic': 'all_events',
+      'eventId': eventId,
+      'eventName': eventTitle,
+      'type': type,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  /// Get notification title based on type
+  String _getNotificationTitle(String type, String eventTitle) {
+    switch (type) {
+      case 'event_cancelled':
+        return 'Event Cancelled';
+      case 'event_reactivated':
+        return 'Event Reactivated';
+      case 'event_updated':
+        return 'Event Updated';
+      case 'event_deleted':
+        return 'Event Deleted';
+      default:
+        return 'Event Notification';
     }
   }
 
