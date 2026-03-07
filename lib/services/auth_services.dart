@@ -59,4 +59,18 @@ class AuthService {
   Future<void> logout() async {
     await _auth.signOut();
   }
+
+  /// GET USER ROLE
+  Future<String> getUserRole(String uid) async {
+    try {
+      DocumentSnapshot userDoc = await _db.collection('users').doc(uid).get();
+      if (userDoc.exists) {
+        Map<String, dynamic> data = userDoc.data() as Map<String, dynamic>;
+        return data['role'] ?? 'student';
+      }
+    } catch (e) {
+      print("Error fetching role: $e");
+    }
+    return 'student'; // Fallback
+  }
 }
