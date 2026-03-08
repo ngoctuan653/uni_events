@@ -27,41 +27,66 @@ class _ManageStaffScreenState extends State<ManageStaffScreen> {
   bool _isSearching = false;
   List<Map<String, dynamic>> _searchResults = [];
   String? _searchError;
+  String _searchQuery = '';
 
-  Future<void> _search() async {
-    final query = _searchController.text.trim();
-    if (query.isEmpty) return;
-
+  void _onSearchChanged(String query) async {
     setState(() {
-      _isSearching = true;
-      _searchError = null;
-      _searchResults = [];
+      _searchQuery = query.trim().toLowerCase();
     });
 
-    try {
-      // Try searching by email first
-      var results = await _clubService.searchUserByEmail(query);
-
-      // If no results, try by studentId
-      if (results.isEmpty) {
-        results = await _clubService.searchUserByStudentId(query);
-      }
-
-      if (results.isEmpty) {
+    if (_searchQuery.isEmpty) {
+      if (mounted) {
         setState(() {
-          _searchError = 'No user found with "$query"';
+          _searchResults = [];
+          _isSearching = false;
+          _searchError = null;
         });
-      } else {
+      }
+      return;
+    }
+
+    if (mounted) {
+      setState(() {
+        _isSearching = true;
+        _searchError = null;
+      });
+    }
+
+    try {
+      final querySnapshot = await _db.collection('users').get();
+
+      final filteredDocs = querySnapshot.docs.where((doc) {
+        final data = doc.data();
+        final email = (data['email'] ?? '').toString().toLowerCase();
+        final name = (data['name'] ?? '').toString().toLowerCase();
+        final studentId = (data['studentId'] ?? '').toString().toLowerCase();
+
+        return email.contains(_searchQuery) ||
+            name.contains(_searchQuery) ||
+            studentId.contains(_searchQuery);
+      }).toList();
+
+      if (mounted) {
         setState(() {
-          _searchResults = results;
+          _searchResults = filteredDocs.map((doc) {
+            final data = doc.data();
+            data['uid'] = doc.id;
+            return data;
+          }).toList();
+
+          if (_searchResults.isEmpty) {
+            _searchError = 'No user found';
+          }
+          _isSearching = false;
         });
       }
     } catch (e) {
-      setState(() {
-        _searchError = 'Error: ${e.toString()}';
-      });
-    } finally {
-      setState(() => _isSearching = false);
+      if (mounted) {
+        setState(() {
+          _searchError = 'Error: ${e.toString()}';
+          _isSearching = false;
+        });
+      }
     }
   }
 
@@ -183,59 +208,43 @@ class _ManageStaffScreenState extends State<ManageStaffScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _searchController,
-                        decoration: InputDecoration(
-                          hintText: 'Enter email or student ID',
-                          hintStyle: TextStyle(color: Colors.grey.shade400),
-                          prefixIcon: const Icon(Icons.search),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: Colors.grey.shade300),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Colors.orange),
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
-                        ),
-                        onSubmitted: (_) => _search(),
-                      ),
+                TextField(
+                  controller: _searchController,
+                  onChanged: _onSearchChanged,
+                  decoration: InputDecoration(
+                    hintText: 'Search by name, email, or student ID...',
+                    hintStyle: TextStyle(color: Colors.grey.shade400),
+                    prefixIcon: const Icon(Icons.search),
+                    suffixIcon: _searchQuery.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear),
+                            onPressed: () {
+                              _searchController.clear();
+                              _onSearchChanged('');
+                            },
+                          )
+                        : null,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Colors.grey.shade300),
                     ),
-                    const SizedBox(width: 12),
-                    SizedBox(
-                      height: 48,
-                      child: ElevatedButton(
-                        onPressed: _isSearching ? null : _search,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.orange,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        child: _isSearching
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : const Text(
-                                'Search',
-                                style: TextStyle(color: Colors.white),
-                              ),
-                      ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Colors.orange),
                     ),
-                  ],
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                  ),
                 ),
+                if (_isSearching)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 16),
+                    child: Center(
+                      child: CircularProgressIndicator(color: Colors.orange),
+                    ),
+                  ),
 
                 // Search results
                 if (_searchError != null) ...[

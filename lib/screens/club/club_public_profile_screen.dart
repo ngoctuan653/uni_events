@@ -3,7 +3,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import '../../models/event.dart';
 import '../../services/event_services.dart';
+import '../../services/club_services.dart'; // Added for fetching members
 import '../event/event_detail_screen.dart';
+import 'club_members_screen.dart'; // Added for navigation
 
 class ClubPublicProfileScreen extends StatefulWidget {
   final String clubId;
@@ -18,6 +20,7 @@ class ClubPublicProfileScreen extends StatefulWidget {
 class _ClubPublicProfileScreenState extends State<ClubPublicProfileScreen> {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   final EventService _eventService = EventService();
+  final ClubService _clubService = ClubService(); // New instance
 
   Map<String, dynamic>? _clubData;
   bool _isLoading = true;
@@ -129,6 +132,66 @@ class _ClubPublicProfileScreenState extends State<ClubPublicProfileScreen> {
                             ),
                           ),
                         ),
+                      const SizedBox(height: 12),
+                      // Member Count Builder
+                      StreamBuilder<List<dynamic>>(
+                        stream: _clubService.getClubMembers(widget.clubId),
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState ==
+                              ConnectionState.waiting) {
+                            return const SizedBox.shrink();
+                          }
+                          final memberCount = snapshot.data?.length ?? 0;
+                          return GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => ClubMembersScreen(
+                                    clubId: widget.clubId,
+                                    clubName: name,
+                                  ),
+                                ),
+                              );
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.people,
+                                    color: Colors.white,
+                                    size: 18,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    '$memberCount Members',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  const Icon(
+                                    Icons.chevron_right,
+                                    color: Colors.white,
+                                    size: 16,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
                     ],
                   ),
                 ),

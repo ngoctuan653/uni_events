@@ -153,9 +153,15 @@ class ClubService {
     }
 
     // Also check if clubId is a user doc (old system where club = user)
+    // ONLY allow if the user is STILL a club (they weren't downgraded to student)
     final userDoc = await _db.collection('users').doc(clubId).get();
     if (userDoc.exists) {
-      if (clubId == userId) return true;
+      if (clubId == userId) {
+        final data = userDoc.data();
+        if (data != null && data['role'] == 'club') {
+          return true;
+        }
+      }
     }
 
     return false;

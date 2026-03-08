@@ -4,9 +4,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../services/auth_services.dart';
 import '../../models/event.dart';
+import '../../services/club_services.dart';
 import '../auth/login_screen.dart';
 import '../profile/edit_profile_screen.dart';
 import '../event/event_detail_screen.dart';
+import 'club_members_screen.dart';
 
 class ClubProfileScreen extends StatefulWidget {
   const ClubProfileScreen({super.key});
@@ -19,6 +21,7 @@ class _ClubProfileScreenState extends State<ClubProfileScreen> {
   final AuthService _authService = AuthService();
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final ClubService _clubService = ClubService();
 
   Map<String, dynamic>? _clubData;
   int _eventsCount = 0;
@@ -138,6 +141,7 @@ class _ClubProfileScreenState extends State<ClubProfileScreen> {
     }
 
     final clubName = _clubData?['name'] ?? 'Club';
+    final clubAvatar = _clubData?['avatar'] ?? '';
     final clubEmail = _clubData?['email'] ?? '';
     final clubBio = _clubData?['bio'] ?? 'No bio available';
     final clubHistory = _clubData?['history'] ?? '';
@@ -169,24 +173,22 @@ class _ClubProfileScreenState extends State<ClubProfileScreen> {
               const SizedBox(height: 20),
 
               // Logo / Avatar
-              Container(
-                width: 100,
-                height: 100,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.orange.shade50,
-                  border: Border.all(color: Colors.orange.shade200, width: 2),
-                ),
-                child: Center(
-                  child: Text(
-                    _getInitials(clubName),
-                    style: TextStyle(
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.orange.shade800,
-                    ),
-                  ),
-                ),
+              CircleAvatar(
+                radius: 50,
+                backgroundColor: Colors.orange.shade50,
+                backgroundImage: (clubAvatar.isNotEmpty)
+                    ? NetworkImage(clubAvatar)
+                    : null,
+                child: (clubAvatar.isEmpty)
+                    ? Text(
+                        _getInitials(clubName),
+                        style: TextStyle(
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.orange.shade800,
+                        ),
+                      )
+                    : null,
               ),
               const SizedBox(height: 16),
 
@@ -284,7 +286,37 @@ class _ClubProfileScreenState extends State<ClubProfileScreen> {
               // Stats
               Row(
                 children: [
-                  Expanded(child: _buildStatCard('--', 'MEMBERS')),
+                  Expanded(
+                    child: StreamBuilder<List<dynamic>>(
+                      stream: _auth.currentUser != null
+                          ? _clubService.getClubMembers(_auth.currentUser!.uid)
+                          : const Stream.empty(),
+                      builder: (context, snapshot) {
+                        final memberCount = snapshot.data?.length ?? 0;
+                        return GestureDetector(
+                          onTap: () {
+                            if (_auth.currentUser != null) {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => ClubMembersScreen(
+                                    clubId: _auth.currentUser!.uid,
+                                    clubName: clubName,
+                                  ),
+                                ),
+                              );
+                            }
+                          },
+                          child: _buildStatCard(
+                            snapshot.connectionState == ConnectionState.waiting
+                                ? '--'
+                                : memberCount.toString(),
+                            'MEMBERS',
+                          ),
+                        );
+                      },
+                    ),
+                  ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: _buildStatCard(_eventsCount.toString(), 'EVENTS'),
