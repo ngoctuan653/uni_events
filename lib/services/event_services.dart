@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/event.dart';
 import '../models/registration_model.dart';
+import 'notification_services.dart';
 // CheckInModel is prepared for future QR-based attendance tracking feature.
 // Uncomment when implementing check-in functionality. Check-ins are IMMUTABLE
 // attendance records (separate from mutable registrations).
@@ -286,7 +287,7 @@ class EventService {
         );
       }
 
-      // 3. Date/time changed → notify "event rescheduled"
+      // 3. Date/time or location changed -> notify "event updated"
       final oldStart = oldEvent.startTime;
       final oldEnd = oldEvent.endTime;
       final newStart = event.startTime;
@@ -302,18 +303,32 @@ class EventService {
         dateChanged = oldEnd != newEnd;
       }
 
-      if (dateChanged && event.status != 'inactive') {
+      bool locationChanged = oldEvent.location != event.location;
+
+      if ((dateChanged || locationChanged) && event.status != 'inactive') {
         String newDateStr = '';
-        if (newStart != null) {
+        if (dateChanged && newStart != null) {
           newDateStr =
               '${newStart.day}/${newStart.month}/${newStart.year} ${newStart.hour}:${newStart.minute.toString().padLeft(2, '0')}';
         }
+
+        String msg = 'The event "${event.title}" has been updated.';
+        if (dateChanged && locationChanged) {
+          msg =
+              'The event "${event.title}" has been rescheduled${newDateStr.isNotEmpty ? ' to $newDateStr' : ''} and the location was changed to ${event.location}. Please check the new details.';
+        } else if (dateChanged) {
+          msg =
+              'The event "${event.title}" has been rescheduled${newDateStr.isNotEmpty ? ' to $newDateStr' : ''}. Please check the new details.';
+        } else if (locationChanged) {
+          msg =
+              'The location for event "${event.title}" has been changed to ${event.location}. Please check the new details.';
+        }
+
         await _notifyRegisteredUsers(
           eventId: event.id,
           eventTitle: event.title,
           type: 'event_updated',
-          message:
-              'The event "${event.title}" has been rescheduled${newDateStr.isNotEmpty ? ' to $newDateStr' : ''}. Please check the new details.',
+          message: msg,
         );
       }
     }
@@ -389,12 +404,20 @@ class EventService {
     required String type,
     required String message,
   }) async {
+    // Assuming NotificationService is imported and available in scope.
+    // For this to be syntactically correct, you would need:
+    // import 'package:your_app_path/services/notification_service.dart'; // or wherever it is
+    // And an instance field like:
+    // final NotificationService _notificationService = NotificationService();
+    // in the class where this method resides.
+    final notificationService = NotificationService();
+
     // Get all registrations using backward compatibility helper
     final registrations = await _getRegistrationsWithBackwardCompatibility(
       eventId: eventId,
     );
 
-    // Write to user_notifications for registered users
+    // Write to user_notifications and send push for each user
     for (var registration in registrations) {
       await _db.collection('user_notifications').add({
         'userId': registration.userId,
@@ -405,9 +428,18 @@ class EventService {
         'isRead': false,
         'createdAt': FieldValue.serverTimestamp(),
       });
+
+      // Send system push notification
+      await notificationService.sendPushToUser(
+        targetUserId: registration.userId,
+        title: _getNotificationTitle(type, eventTitle),
+        body: message,
+        type: type,
+        extraData: {'eventId': eventId, 'eventName': eventTitle},
+      );
     }
 
-    // Write to notifications collection to trigger Cloud Function for FCM push notification
+    // Write to notifications collection for Firestore listener
     await _db.collection('notifications').add({
       'title': _getNotificationTitle(type, eventTitle),
       'body': message,
@@ -553,7 +585,12 @@ class EventService {
     );
 
     // Write to registrations collection only
-    await _db.collection(_registrationsCollection).add(registration.toMap());
+    final docRef = await _db
+        .collection(_registrationsCollection)
+        .add(registration.toMap());
+
+    // Update the registration with qrCode = document ID (unique QR for check-in)
+    await docRef.update({'qrCode': docRef.id});
 
     // Increment participant count
     await _db.collection('events').doc(eventId).update({

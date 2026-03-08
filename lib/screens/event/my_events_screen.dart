@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../models/event.dart';
 import '../../services/event_services.dart';
+import '../../services/club_services.dart';
 import 'event_detail_screen.dart';
 
 class MyEventsScreen extends StatefulWidget {
@@ -13,6 +15,31 @@ class MyEventsScreen extends StatefulWidget {
 
 class _MyEventsScreenState extends State<MyEventsScreen> {
   final EventService _eventService = EventService();
+  final ClubService _clubService = ClubService();
+  List<String> _staffClubIds = [];
+  bool _staffLoaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadStaffClubs();
+  }
+
+  Future<void> _loadStaffClubs() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    final memberships = await _clubService.getUserClubMemberships(user.uid);
+    print('Staff memberships found: ${memberships.length}');
+    for (var m in memberships) {
+      print('  clubId: ${m.clubId}, role: ${m.role}');
+    }
+    if (mounted) {
+      setState(() {
+        _staffClubIds = memberships.map((m) => m.clubId).toList();
+        _staffLoaded = true;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -63,7 +90,7 @@ class _MyEventsScreenState extends State<MyEventsScreen> {
 
           final events = snapshot.data ?? [];
 
-          if (events.isEmpty) {
+          if (events.isEmpty && _staffClubIds.isEmpty) {
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -95,6 +122,38 @@ class _MyEventsScreenState extends State<MyEventsScreen> {
           return ListView(
             padding: const EdgeInsets.all(20),
             children: [
+              // Club Events section for staff
+              if (_staffClubIds.isNotEmpty) ...[
+                _buildSectionHeader(
+                  'Club Events (Staff)',
+                  Icons.groups,
+                  Colors.blue,
+                ),
+                const SizedBox(height: 12),
+                ..._staffClubIds.map((clubId) {
+                  return StreamBuilder<List<Event>>(
+                    stream: _eventService.getEventsByClubId(clubId),
+                    builder: (context, clubSnapshot) {
+                      if (!clubSnapshot.hasData || clubSnapshot.data!.isEmpty) {
+                        return const SizedBox.shrink();
+                      }
+                      return Column(
+                        children: clubSnapshot.data!
+                            .map(
+                              (e) => _buildEventCard(
+                                e,
+                                e.isPastEvent,
+                                isStaff: true,
+                              ),
+                            )
+                            .toList(),
+                      );
+                    },
+                  );
+                }),
+                const SizedBox(height: 24),
+              ],
+
               if (upcoming.isNotEmpty) ...[
                 _buildSectionHeader(
                   'Upcoming',
@@ -135,7 +194,7 @@ class _MyEventsScreenState extends State<MyEventsScreen> {
     );
   }
 
-  Widget _buildEventCard(Event event, bool isPast) {
+  Widget _buildEventCard(Event event, bool isPast, {bool isStaff = false}) {
     String dateStr = 'TBD';
     String timeStr = 'TBD';
     if (event.startTime != null) {

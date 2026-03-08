@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../services/event_services.dart';
 import '../../models/event.dart';
 import '../event/create_edit_event_screen.dart';
+import 'manage_staff_screen.dart';
 
 class ClubDashboardScreen extends StatelessWidget {
   const ClubDashboardScreen({super.key});
@@ -84,6 +85,42 @@ class ClubDashboardScreen extends StatelessWidget {
                   ),
                 ),
               ],
+            ),
+
+            const SizedBox(height: 16),
+
+            // Manage Staff button
+            SizedBox(
+              width: double.infinity,
+              height: 44,
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  final userId = FirebaseAuth.instance.currentUser?.uid ?? '';
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ManageStaffScreen(
+                        clubId: userId,
+                        clubName: 'My Club',
+                      ),
+                    ),
+                  );
+                },
+                icon: Icon(Icons.group_add, color: Colors.orange.shade700),
+                label: Text(
+                  'Manage Staff',
+                  style: TextStyle(
+                    color: Colors.orange.shade700,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(color: Colors.orange.shade300),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
             ),
 
             const SizedBox(height: 30),

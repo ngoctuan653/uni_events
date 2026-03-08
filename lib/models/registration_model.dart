@@ -83,6 +83,8 @@ class RegistrationModel {
   final String userId;
   final String status;
   final DateTime registeredAt;
+  final String
+  qrCode; // Unique QR code for check-in (equals registration doc ID)
 
   RegistrationModel({
     required this.id,
@@ -90,6 +92,7 @@ class RegistrationModel {
     required this.userId,
     required this.status,
     required this.registeredAt,
+    this.qrCode = '',
   });
 
   factory RegistrationModel.fromFirestore(
@@ -104,6 +107,7 @@ class RegistrationModel {
       registeredAt: data['registeredAt'] != null
           ? (data['registeredAt'] as Timestamp).toDate()
           : DateTime.now(),
+      qrCode: data['qrCode'] ?? id, // Default to doc ID if not set
     );
   }
 
@@ -113,6 +117,7 @@ class RegistrationModel {
       'userId': userId,
       'status': status,
       'registeredAt': Timestamp.fromDate(registeredAt),
+      'qrCode': qrCode,
     };
   }
 }

@@ -108,6 +108,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 icon = Icons.update;
                 iconColor = Colors.blue;
                 bgColor = Colors.blue.shade50;
+              } else if (type == 'staff_promoted') {
+                icon = Icons.badge;
+                iconColor = Colors.purple;
+                bgColor = Colors.purple.shade50;
+              } else if (type == 'staff_removed') {
+                icon = Icons.person_remove;
+                iconColor = Colors.red;
+                bgColor = Colors.red.shade50;
               } else {
                 icon = Icons.info_outline;
                 iconColor = Colors.blue;

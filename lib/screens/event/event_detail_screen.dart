@@ -4,7 +4,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../models/event.dart';
 import '../../services/event_services.dart';
+import '../../services/club_services.dart';
 import '../club/club_public_profile_screen.dart';
+import 'qr_display_screen.dart';
+import 'manage_checkin_screen.dart';
 
 class EventDetailScreen extends StatefulWidget {
   final Event event;
@@ -29,11 +32,29 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   // User role
   String _userRole = 'student';
 
+  // Staff/admin check for manage check-in
+  bool _isStaffOrAdmin = false;
+  final ClubService _clubService = ClubService();
+
   @override
   void initState() {
     super.initState();
     _fetchClubData();
     _fetchUserRole();
+    _checkStaffStatus();
+  }
+
+  Future<void> _checkStaffStatus() async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+    final clubId = widget.event.clubId.isNotEmpty
+        ? widget.event.clubId
+        : widget.event.createdBy;
+    if (clubId.isEmpty) return;
+    final isStaff = await _clubService.isStaffOrAdmin(user.uid, clubId);
+    if (mounted) {
+      setState(() => _isStaffOrAdmin = isStaff);
+    }
   }
 
   Future<void> _fetchUserRole() async {
@@ -722,17 +743,58 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                     },
                   ),
 
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 24),
 
-                  // Register / Unregister Button (live state) - Only for students
-                  if (_userRole == 'student')
+                  // Manage Check-in button (for staff/admin only)
+                  if (_isStaffOrAdmin)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => ManageCheckInScreen(
+                                  eventId: event.id,
+                                  eventTitle: event.title,
+                                ),
+                              ),
+                            );
+                          },
+                          icon: const Icon(
+                            Icons.qr_code_scanner,
+                            color: Colors.white,
+                          ),
+                          label: const Text(
+                            'Manage Check-in',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blue.shade600,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+
+                  // Register / Unregister Button (live state) - Only for students, NOT staff of this club
+                  if (_userRole == 'student' && !_isStaffOrAdmin)
                     StreamBuilder<bool>(
                       stream: _eventService.isRegisteredStream(event.id),
                       builder: (context, snapshot) {
                         final isRegistered = snapshot.data ?? false;
 
                         if (isRegistered) {
-                          // Already registered — show status + unregister option
+                          // Already registered — show status + QR + unregister
                           return Column(
                             children: [
                               Container(
@@ -766,6 +828,63 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                                       ),
                                     ),
                                   ],
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              // View My QR Code button
+                              SizedBox(
+                                width: double.infinity,
+                                height: 50,
+                                child: ElevatedButton.icon(
+                                  onPressed: () async {
+                                    // Get registration ID for QR
+                                    final user = _auth.currentUser;
+                                    if (user == null) return;
+                                    final regSnapshot = await _db
+                                        .collection('registrations')
+                                        .where('eventId', isEqualTo: event.id)
+                                        .where('userId', isEqualTo: user.uid)
+                                        .limit(1)
+                                        .get();
+                                    if (regSnapshot.docs.isNotEmpty &&
+                                        mounted) {
+                                      final regId = regSnapshot.docs.first.id;
+                                      final userData = await _db
+                                          .collection('users')
+                                          .doc(user.uid)
+                                          .get();
+                                      final studentName =
+                                          userData.data()?['name'] ?? 'Student';
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => QRDisplayScreen(
+                                            registrationId: regId,
+                                            eventTitle: event.title,
+                                            studentName: studentName,
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  },
+                                  icon: const Icon(
+                                    Icons.qr_code,
+                                    color: Colors.white,
+                                  ),
+                                  label: const Text(
+                                    'View My QR Code',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.orange,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
                                 ),
                               ),
                               const SizedBox(height: 12),

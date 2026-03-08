@@ -4,6 +4,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/services.dart' show rootBundle;
+import 'package:googleapis_auth/auth_io.dart';
+import 'dart:convert';
 import '../screens/notification/notifications_screen.dart';
 
 /// Top-level background message handler for FCM
@@ -79,109 +82,12 @@ class NotificationService {
         // Subscription will be retried on next app launch
       }
 
-      // Step 8: Listen to Firestore notifications collection for local notifications
-      _listenToFirestoreNotifications();
+      // Note: Removed _listenToFirestoreNotifications() here because we now use
+      // real FCM push notifications which handle both background and foreground
+      // natively. Listening to the Firestore collection would cause duplicate
+      // notifications.
     } else {
       print('User declined or has not accepted permission');
-    }
-  }
-
-  /// Listen to Firestore notifications collection and show local notifications
-  /// This is a workaround for free tier without Cloud Functions
-  void _listenToFirestoreNotifications() {
-    _db
-        .collection('notifications')
-        .orderBy('createdAt', descending: true)
-        .limit(1)
-        .snapshots()
-        .listen((snapshot) {
-          for (var change in snapshot.docChanges) {
-            if (change.type == DocumentChangeType.added) {
-              final data = change.doc.data();
-              if (data != null) {
-                // Show local notification
-                _showLocalNotificationFromFirestore(data);
-              }
-            }
-          }
-        });
-  }
-
-  /// Show local notification from Firestore data
-  Future<void> _showLocalNotificationFromFirestore(
-    Map<String, dynamic> data,
-  ) async {
-    try {
-      final title = data['title'] as String? ?? 'Event Notification';
-      final body = data['body'] as String? ?? 'You have a new event update';
-      final eventId = data['eventId'] as String? ?? '';
-      final eventName = data['eventName'] as String? ?? '';
-      final type = data['type'] as String? ?? 'event_notification';
-
-      print('Showing notification from Firestore - Title: $title, Body: $body');
-
-      // Configure Android notification details with MAXIMUM settings
-      const AndroidNotificationDetails androidDetails =
-          AndroidNotificationDetails(
-            'high_importance_channel',
-            'Event Notifications',
-            channelDescription: 'Notifications for event updates',
-            importance: Importance.max,
-            priority: Priority.max,
-            playSound: true,
-            enableVibration: true,
-            enableLights: true,
-            showWhen: true,
-            visibility: NotificationVisibility.public,
-            ticker: 'Event Update',
-          );
-
-      // Configure iOS notification details
-      const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
-        presentAlert: true,
-        presentBadge: true,
-        presentSound: true,
-      );
-
-      // Combine platform-specific details
-      const NotificationDetails platformDetails = NotificationDetails(
-        android: androidDetails,
-        iOS: iosDetails,
-      );
-
-      // Generate unique notification ID
-      final notificationId = DateTime.now().millisecondsSinceEpoch;
-
-      print('About to call _localNotifications.show with ID: $notificationId');
-
-      // Show the notification
-      await _localNotifications.show(
-        notificationId,
-        title,
-        body,
-        platformDetails,
-      );
-
-      print('_localNotifications.show completed');
-
-      // Save to user_notifications for current user
-      User? user = _auth.currentUser;
-      if (user != null && eventId.isNotEmpty) {
-        await _db.collection('user_notifications').add({
-          'userId': user.uid,
-          'eventId': eventId,
-          'eventTitle': eventName,
-          'type': type,
-          'message': body,
-          'isRead': false,
-          'createdAt': FieldValue.serverTimestamp(),
-        });
-        print('Saved to user_notifications for user: ${user.uid}');
-      }
-
-      print('Notification shown successfully from Firestore');
-    } catch (e) {
-      print('Error showing notification from Firestore: $e');
     }
   }
 
@@ -554,5 +460,86 @@ class NotificationService {
         .where('isRead', isEqualTo: false)
         .snapshots()
         .map((snapshot) => snapshot.docs.length);
+  }
+
+  /// Firebase project ID (from service-account.json)
+  static const String _projectId = 'uni-events-72162';
+
+  /// Send a push notification to a specific user via FCM V1 API
+  ///
+  /// Uses Service Account credentials (assets/service-account.json)
+  /// to authenticate with FCM V1 API.
+  Future<void> sendPushToUser({
+    required String targetUserId,
+    required String title,
+    required String body,
+    String type = 'general',
+    Map<String, String>? extraData,
+  }) async {
+    try {
+      // Get target user's FCM token
+      final userDoc = await _db.collection('users').doc(targetUserId).get();
+      if (!userDoc.exists) {
+        print('Cannot send push: user $targetUserId not found');
+        return;
+      }
+
+      final fcmToken = userDoc.data()?['fcmToken'] as String?;
+      if (fcmToken == null || fcmToken.isEmpty) {
+        print('Cannot send push: user $targetUserId has no FCM token');
+        return;
+      }
+
+      // Load Service Account credentials
+      final serviceAccountJson = await rootBundle.loadString(
+        'assets/service-account.json',
+      );
+      final serviceAccount = ServiceAccountCredentials.fromJson(
+        jsonDecode(serviceAccountJson),
+      );
+
+      // Get OAuth2 access token
+      final scopes = ['https://www.googleapis.com/auth/firebase.messaging'];
+      final authClient = await clientViaServiceAccount(serviceAccount, scopes);
+
+      // Build FCM V1 payload
+      final payload = {
+        'message': {
+          'token': fcmToken,
+          'notification': {'title': title, 'body': body},
+          'data': {
+            'type': type,
+            'click_action': 'FLUTTER_NOTIFICATION_CLICK',
+            ...?extraData,
+          },
+          'android': {
+            'priority': 'HIGH',
+            'notification': {
+              'sound': 'default',
+              'channel_id': 'high_importance_channel',
+            },
+          },
+        },
+      };
+
+      // Send via FCM V1 API
+      final response = await authClient.post(
+        Uri.parse(
+          'https://fcm.googleapis.com/v1/projects/$_projectId/messages:send',
+        ),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(payload),
+      );
+
+      authClient.close();
+
+      if (response.statusCode == 200) {
+        print('Push notification sent to user $targetUserId');
+      } else {
+        print('FCM V1 send failed: ${response.statusCode} ${response.body}');
+      }
+    } catch (e) {
+      print('Error sending push notification: $e');
+    }
   }
 }

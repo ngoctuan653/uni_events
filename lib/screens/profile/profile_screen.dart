@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../services/auth_services.dart';
+import '../../services/club_services.dart';
+import '../../models/club_member_model.dart';
 import '../auth/login_screen.dart';
 import 'edit_profile_screen.dart';
 
@@ -24,10 +26,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String faculty = "Not provided";
   String? avatar;
 
+  // Club memberships
+  final ClubService _clubService = ClubService();
+  List<ClubMemberModel> _clubMemberships = [];
+
   @override
   void initState() {
     super.initState();
     _fetchUserData();
+    _fetchClubMemberships();
+  }
+
+  Future<void> _fetchClubMemberships() async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+    final memberships = await _clubService.getUserClubMemberships(user.uid);
+    if (mounted) {
+      setState(() => _clubMemberships = memberships);
+    }
   }
 
   Future<void> _fetchUserData() async {
@@ -231,6 +247,102 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
               const SizedBox(height: 30),
+
+              // CLUB AFFILIATIONS Section (only if user is a staff/member of any club)
+              if (_clubMemberships.isNotEmpty) ...[
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'CLUB AFFILIATIONS',
+                    style: TextStyle(
+                      color: Colors.grey.shade600,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                ..._clubMemberships.map((membership) {
+                  return FutureBuilder<DocumentSnapshot>(
+                    future: _db
+                        .collection('users')
+                        .doc(membership.clubId)
+                        .get(),
+                    builder: (context, userSnap) {
+                      String clubName = 'Loading...';
+                      if (userSnap.hasData && userSnap.data!.exists) {
+                        clubName =
+                            (userSnap.data!.data()
+                                as Map<String, dynamic>?)?['name'] ??
+                            'Unknown Club';
+                      }
+
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 10),
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.blue.shade100),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.blue.shade100,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.groups,
+                                color: Colors.blue.shade700,
+                                size: 20,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    clubName,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 15,
+                                      color: Colors.black87,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.blue.shade100,
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      'Role: ${membership.role.toUpperCase()}',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.blue.shade800,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  );
+                }),
+                const SizedBox(height: 30),
+              ],
 
               // SETTINGS Section
               Align(
