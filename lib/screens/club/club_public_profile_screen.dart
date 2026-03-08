@@ -358,18 +358,9 @@ class _ClubPublicProfileScreenState extends State<ClubPublicProfileScreen> {
                 );
               }
 
-              // Split into active and past
-              final now = DateTime.now();
-              final active = events
-                  .where(
-                    (e) => e.startTime == null || e.startTime!.isAfter(now),
-                  )
-                  .toList();
-              final past = events
-                  .where(
-                    (e) => e.startTime != null && e.startTime!.isBefore(now),
-                  )
-                  .toList();
+              // Split into active (upcoming + ongoing) and past events
+              final active = events.where((e) => !e.isPastEvent).toList();
+              final past = events.where((e) => e.isPastEvent).toList();
 
               final combined = <Widget>[];
 

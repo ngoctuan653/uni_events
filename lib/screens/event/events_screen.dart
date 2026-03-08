@@ -52,15 +52,24 @@ class _EventsScreenState extends State<EventsScreen> {
             }
 
             List<Event> allEvents = snapshot.data ?? [];
-            // Sort events by participant count (highest first)
-            allEvents.sort(
+
+            // Filter out past events for featured section
+            List<Event> activeEvents = allEvents
+                .where((event) => !event.isPastEvent)
+                .toList();
+
+            // Sort active events by participant count (highest first)
+            activeEvents.sort(
               (a, b) => b.participantCount.compareTo(a.participantCount),
             );
-            // Show all events in featured section
-            List<Event> featuredEvents = allEvents;
+            // Show active events in featured section
+            List<Event> featuredEvents = activeEvents;
 
             // Sort upcoming events by start time (nearest first)
-            List<Event> upcomingEvents = List.from(allEvents);
+            // Include ongoing events but exclude past events
+            List<Event> upcomingEvents = activeEvents
+                .where((event) => event.isUpcoming || event.isOngoing)
+                .toList();
             upcomingEvents.sort((a, b) {
               if (a.startTime == null && b.startTime == null) return 0;
               if (a.startTime == null) return 1;

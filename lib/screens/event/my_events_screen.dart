@@ -88,14 +88,9 @@ class _MyEventsScreenState extends State<MyEventsScreen> {
             );
           }
 
-          // Split into upcoming and past events
-          final now = DateTime.now();
-          final upcoming = events
-              .where((e) => e.startTime == null || e.startTime!.isAfter(now))
-              .toList();
-          final past = events
-              .where((e) => e.startTime != null && e.startTime!.isBefore(now))
-              .toList();
+          // Split into upcoming (including ongoing) and past events
+          final upcoming = events.where((e) => !e.isPastEvent).toList();
+          final past = events.where((e) => e.isPastEvent).toList();
 
           return ListView(
             padding: const EdgeInsets.all(20),

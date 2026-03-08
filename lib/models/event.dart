@@ -81,4 +81,34 @@ class Event {
       'note': note,
     };
   }
+
+  /// Check if the event has ended (past event)
+  bool get isPastEvent {
+    if (endTime != null) {
+      return endTime!.isBefore(DateTime.now());
+    }
+    // If no endTime, check startTime
+    if (startTime != null) {
+      // Consider event ended if it started more than 3 hours ago
+      return startTime!.add(const Duration(hours: 3)).isBefore(DateTime.now());
+    }
+    return false;
+  }
+
+  /// Check if the event is currently ongoing
+  bool get isOngoing {
+    final now = DateTime.now();
+    if (startTime != null && endTime != null) {
+      return now.isAfter(startTime!) && now.isBefore(endTime!);
+    }
+    return false;
+  }
+
+  /// Check if the event is upcoming (not started yet)
+  bool get isUpcoming {
+    if (startTime != null) {
+      return startTime!.isAfter(DateTime.now());
+    }
+    return true; // If no startTime, consider it upcoming
+  }
 }

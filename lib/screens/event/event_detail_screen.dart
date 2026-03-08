@@ -603,7 +603,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                   const SizedBox(height: 12),
                   StreamBuilder<QuerySnapshot>(
                     stream: _db
-                        .collection('eventRegistrations')
+                        .collection('registrations')
                         .where('eventId', isEqualTo: event.id)
                         .snapshots(),
                     builder: (context, snapshot) {
