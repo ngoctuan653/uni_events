@@ -103,6 +103,37 @@ class NotificationService {
     }
   }
 
+  /// Update FCM token after user login
+  /// This ensures the token is saved to Firestore for the newly logged-in user
+  Future<void> updateTokenAfterLogin() async {
+    // Skip on web platform
+    if (kIsWeb) {
+      print('Skipping FCM token update on web platform');
+      return;
+    }
+
+    // Check if user is logged in
+    User? user = _auth.currentUser;
+    if (user == null) {
+      print('Cannot update FCM token: No user logged in');
+      return;
+    }
+
+    try {
+      // Get current FCM token
+      String? token = await _fcm.getToken();
+      if (token != null) {
+        print('Updating FCM token after login: $token');
+        await saveTokenToDatabase(token);
+        print('FCM token updated successfully for user: ${user.uid}');
+      } else {
+        print('Cannot update FCM token: Token is null');
+      }
+    } catch (e) {
+      print('Error updating FCM token after login: $e');
+    }
+  }
+
   /// Initialize flutter_local_notifications plugin
   /// Configures Android notification channel and iOS notification settings
   Future<void> _initializeLocalNotifications() async {
@@ -159,8 +190,9 @@ class NotificationService {
       try {
         print('Received foreground message: ${message.messageId}');
 
-        // Save notification to Firestore immediately when received
-        createNotificationRecord(message);
+        // NOTE: Do NOT save notification here - it's already saved by the caller
+        // (check-in service, event service, etc.) before sending the push notification.
+        // Saving here would create duplicate in-app notifications.
 
         // Extract title and body from RemoteMessage
         final notification = message.notification;
@@ -392,8 +424,10 @@ class NotificationService {
   void _handleNotificationTap(RemoteMessage message) {
     try {
       print('Handling notification tap for message: ${message.messageId}');
-      // Persist notification to Firestore
-      createNotificationRecord(message);
+
+      // NOTE: Do NOT save notification here - it's already saved when the push
+      // notification was sent. Saving here would create duplicate in-app notifications.
+
       _navigateToNotificationsScreen();
     } catch (e) {
       print(

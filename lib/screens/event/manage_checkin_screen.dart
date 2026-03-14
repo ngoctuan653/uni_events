@@ -25,8 +25,15 @@ class ManageCheckInScreen extends StatefulWidget {
 class _ManageCheckInScreenState extends State<ManageCheckInScreen> {
   final CheckInService _checkInService = CheckInService();
   String _filter = 'all'; // 'all', 'checked', 'not_checked'
+  bool _isProcessing = false; // Prevent double-tap
 
   Future<void> _handleManualCheckIn(String userId, String userName) async {
+    // Prevent double-tap
+    if (_isProcessing) {
+      print('⚠️ Manual check-in already in progress, ignoring duplicate call');
+      return;
+    }
+
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -57,6 +64,10 @@ class _ManageCheckInScreenState extends State<ManageCheckInScreen> {
 
     if (confirm != true) return;
 
+    setState(() {
+      _isProcessing = true;
+    });
+
     try {
       await _checkInService.manualCheckIn(widget.eventId, userId);
       if (mounted) {
@@ -75,6 +86,12 @@ class _ManageCheckInScreenState extends State<ManageCheckInScreen> {
             backgroundColor: Colors.red,
           ),
         );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isProcessing = false;
+        });
       }
     }
   }

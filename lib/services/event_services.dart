@@ -439,16 +439,11 @@ class EventService {
       );
     }
 
-    // Write to notifications collection for Firestore listener
-    await _db.collection('notifications').add({
-      'title': _getNotificationTitle(type, eventTitle),
-      'body': message,
-      'topic': 'all_events',
-      'eventId': eventId,
-      'eventName': eventTitle,
-      'type': type,
-      'createdAt': FieldValue.serverTimestamp(),
-    });
+    // NOTE: Removed topic-based notification to prevent duplicate notifications.
+    // Previously, notifications were sent both to individual users (targeted)
+    // AND to the 'all_events' topic (broadcast), causing users to receive
+    // duplicate notifications. Now only targeted notifications are sent to
+    // users who have registered for the event.
   }
 
   /// Get notification title based on type
