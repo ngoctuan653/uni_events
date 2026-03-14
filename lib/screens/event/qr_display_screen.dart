@@ -61,6 +61,7 @@ class QRDisplayScreen extends StatelessWidget {
                 ),
                 child: Column(
                   children: [
+                    // gen QR Code
                     QrImageView(
                       data: registrationId,
                       version: QrVersions.auto,
