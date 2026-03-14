@@ -12,7 +12,20 @@
           "package_name": "com.example.uni_events"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "600976886800-4ljlk9pdqrm21hs9c27n8eplel782i98.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.uni_events",
+            "certificate_hash": "94ca4d22b3d2e3a9068887ec6a1b5243127eb367"
+          }
+        },
+        {
+          "client_id": "600976886800-c2b7mla57t6t46f2reuj2eimaj98t1a2.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyCNaqbemAxVaOnY3BNK1sZZxqV43fwz06M"
@@ -20,7 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "600976886800-c2b7mla57t6t46f2reuj2eimaj98t1a2.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "600976886800-u2bfnmbikuhhp2ht3ag2pfv66ij80fcg.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.uniEvents"
+              }
+            }
+          ]
         }
       }
     }

@@ -26,6 +26,7 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
   bool _isProcessing = false;
   bool? _lastSuccess;
   String? _lastMessage;
+  String? _lastScannedCode; // Track last scanned code to prevent duplicates
 
   @override
   void dispose() {
@@ -34,7 +35,14 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
   }
 
   Future<void> _handleScan(String registrationId) async {
-    if (_isProcessing) return;
+    // Prevent duplicate scans of the same QR code
+    if (_isProcessing || _lastScannedCode == registrationId) {
+      print('⚠️ Duplicate scan detected, ignoring: $registrationId');
+      return;
+    }
+
+    print('🔍 Processing QR code: $registrationId');
+    _lastScannedCode = registrationId;
 
     // Stop camera immediately to prevent multiple scans
     _controller.stop();
@@ -148,7 +156,8 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
             ElevatedButton(
               onPressed: () {
                 Navigator.pop(context);
-                // Resume camera for retry
+                // Resume camera for retry and reset last scanned code
+                _lastScannedCode = null;
                 _controller.start();
               },
               style: ElevatedButton.styleFrom(
