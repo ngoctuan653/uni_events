@@ -48,7 +48,7 @@ dependencies:
   mobile_scanner: ^6.0.2
   rxdart: ^0.28.0
   googleapis_auth: ^2.0.0
-  google_sign_in: ^7.2.0
+  google_sign_in: ^6.2.2
   
 dev_dependencies:
   flutter_test:

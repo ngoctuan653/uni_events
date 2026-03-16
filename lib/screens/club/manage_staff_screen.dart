@@ -163,6 +163,7 @@ class _ManageStaffScreenState extends State<ManageStaffScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(title: const Text('Manage Staff'), centerTitle: true),
+      resizeToAvoidBottomInset: false,
       body: Column(
         children: [
           // Club header
@@ -195,7 +196,7 @@ class _ManageStaffScreenState extends State<ManageStaffScreen> {
 
           // Search section
           Padding(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -238,88 +239,97 @@ class _ManageStaffScreenState extends State<ManageStaffScreen> {
                     ),
                   ),
                 ),
-                if (_isSearching)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 16),
-                    child: Center(
-                      child: CircularProgressIndicator(color: Colors.orange),
-                    ),
-                  ),
-
-                // Search results
-                if (_searchError != null) ...[
-                  const SizedBox(height: 12),
-                  Text(
-                    _searchError!,
-                    style: TextStyle(color: Colors.red.shade700, fontSize: 14),
-                  ),
-                ],
-                if (_searchResults.isNotEmpty) ...[
-                  const SizedBox(height: 12),
-                  ..._searchResults.map(
-                    (user) => Container(
-                      margin: const EdgeInsets.only(bottom: 8),
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade50,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.grey.shade200),
-                      ),
-                      child: Row(
-                        children: [
-                          CircleAvatar(
-                            radius: 20,
-                            backgroundColor: Colors.orange.shade100,
-                            child: Icon(
-                              Icons.person,
-                              color: Colors.orange.shade700,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  user['name'] ?? 'Unknown',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 15,
-                                  ),
-                                ),
-                                Text(
-                                  user['email'] ?? '',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color: Colors.grey.shade600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          ElevatedButton(
-                            onPressed: () =>
-                                _addStaff(user['uid'], user['name'] ?? 'User'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.green,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                            child: const Text(
-                              'Add',
-                              style: TextStyle(color: Colors.white),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
               ],
             ),
           ),
 
+          // Search results (constrained height so it doesn't overflow)
+          if (_isSearching)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: Center(
+                child: CircularProgressIndicator(color: Colors.orange),
+              ),
+            ),
+          if (_searchError != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+              child: Text(
+                _searchError!,
+                style: TextStyle(color: Colors.red.shade700, fontSize: 14),
+              ),
+            ),
+          if (_searchResults.isNotEmpty)
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 200),
+              child: ListView.builder(
+                shrinkWrap: true,
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+                itemCount: _searchResults.length,
+                itemBuilder: (context, index) {
+                  final user = _searchResults[index];
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey.shade200),
+                    ),
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 20,
+                          backgroundColor: Colors.orange.shade100,
+                          child: Icon(
+                            Icons.person,
+                            color: Colors.orange.shade700,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                user['name'] ?? 'Unknown',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 15,
+                                ),
+                              ),
+                              Text(
+                                user['email'] ?? '',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.grey.shade600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        ElevatedButton(
+                          onPressed: () =>
+                              _addStaff(user['uid'], user['name'] ?? 'User'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: const Text(
+                            'Add',
+                            style: TextStyle(color: Colors.white),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+
+          const SizedBox(height: 8),
           const Divider(),
 
           // Current staff list
