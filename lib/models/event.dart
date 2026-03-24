@@ -16,6 +16,7 @@ class Event {
   final DateTime? updatedAt;
   final String status;
   final String note;
+  final String category;
 
   Event({
     required this.id,
@@ -33,6 +34,7 @@ class Event {
     this.updatedAt,
     required this.status,
     this.note = '',
+    this.category = 'Other',
   });
 
   factory Event.fromFirestore(Map<String, dynamic> data, String id) {
@@ -60,6 +62,7 @@ class Event {
           : null,
       status: data['status'] ?? 'draft',
       note: data['note'] ?? '',
+      category: data['category'] ?? 'Other',
     );
   }
 
@@ -79,6 +82,7 @@ class Event {
       'updatedAt': updatedAt != null ? Timestamp.fromDate(updatedAt!) : null,
       'status': status,
       'note': note,
+      'category': category,
     };
   }
 

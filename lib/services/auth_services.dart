@@ -72,7 +72,13 @@ class AuthService {
 
   /// LOGOUT
   Future<void> logout() async {
-    await _googleSignIn.signOut();
+    try {
+      await _googleSignIn.signOut();
+    } catch (e) {
+      // Google Sign-In may fail on web if clientId is not configured.
+      // This is safe to ignore — Firebase sign-out will still proceed.
+      print('Google sign-out skipped: $e');
+    }
     await _auth.signOut();
   }
 

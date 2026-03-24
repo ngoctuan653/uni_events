@@ -234,6 +234,7 @@ class EventService {
       updatedAt: DateTime.now(),
       status: event.status.isNotEmpty ? event.status : 'active',
       note: event.note,
+      category: event.category,
     );
 
     try {
@@ -349,6 +350,7 @@ class EventService {
       updatedAt: DateTime.now(),
       status: event.status,
       note: event.note,
+      category: event.category,
     );
 
     await _db.collection('events').doc(event.id).update(updatedEvent.toMap());

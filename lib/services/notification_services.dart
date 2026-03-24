@@ -256,7 +256,7 @@ class NotificationService {
       );
 
       // Generate unique notification ID
-      final notificationId = DateTime.now().millisecondsSinceEpoch;
+      final notificationId = DateTime.now().millisecondsSinceEpoch % 0x7FFFFFFF;
 
       print('Calling _localNotifications.show with ID: $notificationId');
 

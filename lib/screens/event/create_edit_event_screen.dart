@@ -35,6 +35,7 @@ class _CreateEditEventScreenState extends State<CreateEditEventScreen> {
   DateTime? _startTime;
   DateTime? _endTime;
   String _status = 'active';
+  String _category = 'Other';
   File? _selectedImage;
   String? _uploadedImageUrl;
 
@@ -83,6 +84,7 @@ class _CreateEditEventScreenState extends State<CreateEditEventScreen> {
         _uploadedImageUrl = _currentEvent!.image.isNotEmpty
             ? _currentEvent!.image
             : null;
+        _category = _currentEvent!.category;
       }
     } catch (e) {
       if (mounted) {
@@ -200,6 +202,7 @@ class _CreateEditEventScreenState extends State<CreateEditEventScreen> {
           createdBy: '', // managed by EventService
           status: _status,
           note: _noteController.text,
+          category: _category,
         );
         await _eventService.createEvent(event);
         if (mounted) {
@@ -225,6 +228,7 @@ class _CreateEditEventScreenState extends State<CreateEditEventScreen> {
             createdAt: _currentEvent!.createdAt,
             status: _status,
             note: _noteController.text,
+            category: _category,
           );
           await _eventService.updateEvent(event);
         }
@@ -317,6 +321,11 @@ class _CreateEditEventScreenState extends State<CreateEditEventScreen> {
                     'Additional notes, special instructions, or reminders...',
                 maxLines: 3,
               ),
+              const SizedBox(height: 16),
+
+              // ─── Category ───
+              _buildLabel('Category'),
+              _buildCategoryDropdown(),
               const SizedBox(height: 16),
 
               // ─── Location ───
@@ -541,6 +550,51 @@ class _CreateEditEventScreenState extends State<CreateEditEventScreen> {
           ],
           onChanged: (val) {
             if (val != null) setState(() => _status = val);
+          },
+        ),
+      ),
+    );
+  }
+
+  static const List<Map<String, dynamic>> _categoryOptions = [
+    {'value': 'Academic', 'icon': Icons.school, 'color': Colors.blue},
+    {'value': 'Career', 'icon': Icons.work, 'color': Colors.indigo},
+    {'value': 'Entertainment', 'icon': Icons.music_note, 'color': Colors.purple},
+    {'value': 'Club', 'icon': Icons.groups, 'color': Colors.teal},
+    {'value': 'Sports', 'icon': Icons.sports_soccer, 'color': Colors.green},
+    {'value': 'Volunteer', 'icon': Icons.volunteer_activism, 'color': Colors.pink},
+    {'value': 'Other', 'icon': Icons.category, 'color': Colors.grey},
+  ];
+
+  Widget _buildCategoryDropdown() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: _category,
+          isExpanded: true,
+          icon: const Icon(Icons.keyboard_arrow_down, color: Colors.orange),
+          style: const TextStyle(color: Colors.black87, fontSize: 14),
+          dropdownColor: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          items: _categoryOptions.map((option) {
+            return DropdownMenuItem<String>(
+              value: option['value'] as String,
+              child: Row(
+                children: [
+                  Icon(option['icon'] as IconData, color: option['color'] as Color, size: 18),
+                  const SizedBox(width: 10),
+                  Text(option['value'] as String),
+                ],
+              ),
+            );
+          }).toList(),
+          onChanged: (val) {
+            if (val != null) setState(() => _category = val);
           },
         ),
       ),

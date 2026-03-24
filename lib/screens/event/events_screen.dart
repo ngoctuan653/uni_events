@@ -17,16 +17,44 @@ class EventsScreen extends StatefulWidget {
 class _EventsScreenState extends State<EventsScreen> {
   final EventService _eventService = EventService();
   final NotificationService _notificationService = NotificationService();
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
   String _selectedCategory = 'All';
 
   final List<String> _categories = [
     'All',
     'Academic',
-    'Social',
-    'Sports',
     'Career',
-    'Music',
+    'Entertainment',
+    'Club',
+    'Sports',
+    'Volunteer',
+    'Other',
   ];
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  /// Filter events by search query and selected category
+  List<Event> _filterEvents(List<Event> events) {
+    return events.where((event) {
+      // Category filter
+      if (_selectedCategory != 'All' && event.category != _selectedCategory) {
+        return false;
+      }
+      // Search filter
+      if (_searchQuery.isNotEmpty) {
+        final query = _searchQuery.toLowerCase();
+        return event.title.toLowerCase().contains(query) ||
+            event.location.toLowerCase().contains(query) ||
+            event.description.toLowerCase().contains(query);
+      }
+      return true;
+    }).toList();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -58,16 +86,19 @@ class _EventsScreenState extends State<EventsScreen> {
                 .where((event) => !event.isPastEvent)
                 .toList();
 
+            // Apply search + category filters
+            List<Event> filteredActive = _filterEvents(activeEvents);
+
             // Sort active events by participant count (highest first)
-            activeEvents.sort(
+            filteredActive.sort(
               (a, b) => b.participantCount.compareTo(a.participantCount),
             );
             // Show active events in featured section
-            List<Event> featuredEvents = activeEvents;
+            List<Event> featuredEvents = filteredActive;
 
             // Sort upcoming events by start time (nearest first)
             // Include ongoing events but exclude past events
-            List<Event> upcomingEvents = activeEvents
+            List<Event> upcomingEvents = filteredActive
                 .where((event) => event.isUpcoming || event.isOngoing)
                 .toList();
             upcomingEvents.sort((a, b) {
@@ -208,20 +239,37 @@ class _EventsScreenState extends State<EventsScreen> {
         children: [
           const Icon(Icons.search, color: Colors.grey),
           const SizedBox(width: 12),
-          const Expanded(
+          Expanded(
             child: TextField(
-              style: TextStyle(color: Colors.black87),
-              decoration: InputDecoration(
-                hintText: 'Search events, clubs, or tags...',
+              controller: _searchController,
+              style: const TextStyle(color: Colors.black87),
+              decoration: const InputDecoration(
+                hintText: 'Search events by name, location...',
                 hintStyle: TextStyle(color: Colors.grey),
                 border: InputBorder.none,
               ),
+              onChanged: (value) {
+                setState(() {
+                  _searchQuery = value;
+                });
+              },
             ),
           ),
-          IconButton(
-            icon: const Icon(Icons.tune, color: Colors.grey),
-            onPressed: () {},
-          ),
+          if (_searchQuery.isNotEmpty)
+            IconButton(
+              icon: const Icon(Icons.close, color: Colors.grey),
+              onPressed: () {
+                setState(() {
+                  _searchController.clear();
+                  _searchQuery = '';
+                });
+              },
+            )
+          else
+            IconButton(
+              icon: const Icon(Icons.tune, color: Colors.grey),
+              onPressed: () {},
+            ),
         ],
       ),
     );
@@ -274,11 +322,9 @@ class _EventsScreenState extends State<EventsScreen> {
         separatorBuilder: (context, index) => const SizedBox(width: 16),
         itemBuilder: (context, index) {
           final event = events[index];
-          // Determine tags or images randomly for UI demonstration
-          List<String> tags = ['CAREER', 'MUSIC', 'ACADEMIC'];
-          List<Color> tagColors = [Colors.blue, Colors.purple, Colors.orange];
-          String tag = tags[index % tags.length];
-          Color tagColor = tagColors[index % tagColors.length];
+          // Use actual event category for tag display
+          String tag = event.category.toUpperCase();
+          Color tagColor = _getCategoryColor(event.category);
 
           String imageUrl = event.image.isNotEmpty
               ? event.image
@@ -430,6 +476,26 @@ class _EventsScreenState extends State<EventsScreen> {
         }).toList(),
       ),
     );
+  }
+
+  Color _getCategoryColor(String category) {
+    switch (category) {
+      case 'Academic':
+        return Colors.blue;
+      case 'Career':
+        return Colors.indigo;
+      case 'Entertainment':
+        return Colors.purple;
+      case 'Club':
+        return Colors.teal;
+      case 'Sports':
+        return Colors.green;
+      case 'Volunteer':
+        return Colors.pink;
+      case 'Other':
+      default:
+        return Colors.grey;
+    }
   }
 
   Widget _buildParticipantIcon(Event event) {
